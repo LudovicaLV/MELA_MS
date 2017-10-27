@@ -1,0 +1,260 @@
+options {
+  STATIC = false;
+}
+
+PARSER_BEGIN(StatMCrules)
+
+package ParserStatMC;
+
+import java.util.ArrayList;
+import TraceAnalyser.Analyser;
+
+public class StatMCrules {
+       
+    public StatMCrules() {
+        this(new java.io.StringReader(""));
+    }
+
+    public void parseFromString( String modelDef ) throws ParseException, TokenMgrError, NumberFormatException {
+        this.ReInit(new java.io.StringReader(modelDef));
+        this.Input();
+    }
+
+    public void parseFromFile( String filename ) throws ParseException, TokenMgrError, NumberFormatException {
+        try { this.ReInit(new java.io.FileReader(filename)); }
+        catch(java.io.IOException e) {throw new ParseException("Error while opening file " + filename + ": " + e); }
+        this.Input();
+    }
+
+}
+
+PARSER_END(StatMCrules)
+
+/***************************************************************
+SKIP
+***************************************************************/
+
+<DEFAULT,RESET,ID> SKIP :
+{
+  " "
+  | "\t"
+  | "\n"
+  | "\r"
+
+  | <"//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
+  | <"/*" (~["*"])* "*" (~["/"] (~["*"])* "*")* "/">
+}
+
+
+/***************************************************************
+TOKENS
+***************************************************************/
+
+ /* LITERALS */
+TOKEN : { < #INTEGER: ("-")? ["0"-"9"] (["0"-"9"])* > }
+TOKEN : { < #FLOAT:
+                            ("-")?  (["0"-"9"])+ "." (["0"-"9"])*
+                            | ("-")?  "." (["0"-"9"])+
+                    > }
+TOKEN : { < #FLOAT_SCIENTIFIC:
+                             ("-")? (["0"-"9"])+ "." (["0"-"9"])* (<EXPONENT>)
+                            |  ("-")? "." (["0"-"9"])+ (<EXPONENT>)
+                            |  ("-")? (["0"-"9"])+ <EXPONENT>
+                    > }
+TOKEN : { < #EXPONENT: ["e","E"] (["+","-"])? (["0"-"9"])+ > }
+TOKEN: { < #LETTER: ["A"-"Z","a"-"z"] > }
+TOKEN: { < #DIGIT: ["0"-"9"] > }
+
+TOKEN: { < #WORD: (["A"-"Z","a"-"z"])+ > }
+
+	
+/*
+IDENTIFIERS
+*/
+
+<DEFAULT> TOKEN : { <SECTION_AGENTS : "#Agents" > }
+
+<DEFAULT> TOKEN : { <SECTION_PROPERTY : "#Property" > }
+
+<DEFAULT> TOKEN : { <SYMBOL_PROP : "A(l)" > }
+
+<DEFAULT> TOKEN : { <SYMBOL_PROP_COUNT : "#A(l)" > }
+
+<DEFAULT> TOKEN : { <KEYWORD_GEQ : ">=" >}
+
+<DEFAULT> TOKEN : { <KEYWORD_LEQ : "<=" >}
+
+<DEFAULT> TOKEN : { <EOL : ";" > }
+<DEFAULT> TOKEN : { <PLUS : "+" > }
+<DEFAULT> TOKEN : { <DOT : "." > }
+<DEFAULT> TOKEN : { <SEMICOLON : ":" > }
+<DEFAULT> TOKEN : { <DEFINE : ":=" > }
+
+<DEFAULT> TOKEN : { <ASSIGN : "=" >}
+<DEFAULT> TOKEN : { <LSQ : "[" >}
+<DEFAULT> TOKEN : { <RSQ : "]" >}
+<DEFAULT> TOKEN : { <LR : "(" > }
+<DEFAULT> TOKEN : { <RR : ")" > }
+<DEFAULT> TOKEN : { <QUO : "\"" > }
+<DEFAULT> TOKEN : { <SQUO : "\'" > }
+<DEFAULT> TOKEN : { <EXCL : "!" > }
+<DEFAULT> TOKEN : { <LBRAC : "{" > }
+<DEFAULT> TOKEN : { <RBRAC : "}" > }
+
+<DEFAULT> TOKEN : { <COMMA : "," >}
+<DEFAULT> TOKEN : { <LANG : "<" > }
+<DEFAULT> TOKEN : { <RANG : ">" > }
+<DEFAULT> TOKEN : { <PARALLEL : "||" > }
+
+<DEFAULT> TOKEN : { <DASH : "-" > }
+
+<DEFAULT> TOKEN : { <UP : ">>" > }
+<DEFAULT> TOKEN : { <DOWN : "<<" > }
+
+/*<DEFAULT> TOKEN: { <MELASYMBOL: < DOT > > }*/
+
+<DEFAULT> TOKEN : {<INT : <INTEGER> > }
+<DEFAULT> TOKEN : {<DOUBLE : <FLOAT>|<FLOAT_SCIENTIFIC> > }
+<DEFAULT> TOKEN: { <IDENTIFIER: <LETTER>(<LETTER>|<DIGIT>|"_"|"$"|"#")*> }
+
+/*<DEFAULT> TOKEN: { <UPDATE_LOC: <WORD>> } */
+
+<MATH> TOKEN : { <MATH_EXPR : (<DIGIT> | <SYMBOL> | <SPACE> | <M_AND> | <M_OR> | <M_LINER> | <M_LINEN> | <SQUO>)+ > : DEFAULT }
+<MATH> TOKEN : { <#SPACE : " " | "\t"> }
+<MATH> TOKEN : { <#M_AND : "&&" > }
+<MATH> TOKEN : { <#M_OR : "|"> }
+<MATH> TOKEN : { <#M_LINER : "\r"> }
+<MATH> TOKEN : { <#M_LINEN : "\n"> }
+
+
+TOKEN : { <#SYMBOL : [".", "=", "+", "-", "*", "/", "%", "^", "(", ")", "!", "<", ">", ",", "_", "[","]" ]> }
+TOKEN : { <#PARAM_SYMBOL : [".", "+", "-", "*", "/", "%", "^" ]> }
+
+
+/***********************************************
+GRAMMAR RULES
+***********************************************/
+
+void Input() throws NumberFormatException, RuntimeException, ParseException :
+{
+    Token x=null, symbol=null, which=null ;    
+}
+{   <SECTION_PROPERTY>
+    <SEMICOLON>
+    which = WhichOptions()
+    symbol = SymbolOptions()
+    x = <INT>
+    <SECTION_AGENTS>
+    <SEMICOLON>
+    <LBRAC>
+    AgentName()
+    (<COMMA>
+    AgentName())*
+    <RBRAC>
+    <EOF>
+    {int value = Integer.parseInt(x.image);
+    TraceAnalyser.Analyser.intProperty = value;}
+}
+
+
+
+Token WhichOptions() throws NumberFormatException, RuntimeException, ParseException :
+{Token whichOne=null;}
+{   
+    [   
+        LOOKAHEAD(1)
+        whichOne = < SYMBOL_PROP >
+        {TraceAnalyser.Analyser.whichProperty = whichOne.image;}
+        |
+        LOOKAHEAD(1)
+        whichOne = < SYMBOL_PROP_COUNT >
+        {TraceAnalyser.Analyser.whichProperty = whichOne.image;}
+    ]
+    {
+      return whichOne;
+    }   
+}    
+
+
+
+Token SymbolOptions() throws NumberFormatException, RuntimeException, ParseException :
+{Token symbol=null;}
+{   
+    [   
+        LOOKAHEAD(2)
+        symbol = < RANG >
+        {TraceAnalyser.Analyser.symbolProperty = symbol.image;}
+        |
+        LOOKAHEAD(2)
+        symbol = < KEYWORD_GEQ >
+        {TraceAnalyser.Analyser.symbolProperty = symbol.image;}
+        |
+        LOOKAHEAD(2)
+        symbol = < ASSIGN >
+        {TraceAnalyser.Analyser.symbolProperty = symbol.image;}
+        |
+        LOOKAHEAD(2)
+        symbol = < KEYWORD_LEQ >
+        {TraceAnalyser.Analyser.symbolProperty = symbol.image;}
+        |
+        LOOKAHEAD(2)
+        symbol = < LANG >
+        {TraceAnalyser.Analyser.symbolProperty = symbol.image;}
+    ]
+    {
+      return symbol;
+    }   
+}    
+    
+void AgentName() throws NumberFormatException, RuntimeException, ParseException :
+{
+    Token name, x=null, y=null, z=null;
+}
+{
+    name = <IDENTIFIER>
+    <LR>
+    x = <INT>
+    (
+       <COMMA>
+    y = <INT>
+    (
+       <COMMA>
+    z = <INT>
+    )?
+    )?    
+    <RR>
+    
+    {
+    
+    if (y == null && z == null){
+    TraceAnalyser.Analyser.namesToCheckList.add(name.image + "(" + x.image + ")");}else{
+    if (z == null) {
+    TraceAnalyser.Analyser.namesToCheckList.add(name.image + "(" + x.image + "," + y.image + ")");}else{
+    TraceAnalyser.Analyser.namesToCheckList.add(name.image + "(" + x.image + "," + y.image + "," + z.image + ")");}}
+      
+    
+    if (y == null && z == null){
+    int xValue = Integer.parseInt(x.image);
+    ArrayList<Integer> xValueList = new ArrayList<Integer>();
+    xValueList.add(xValue);
+    TraceAnalyser.Analyser.namesToCheckListArray.add(xValueList);}else{
+    if (z == null) {
+    int xValue = Integer.parseInt(x.image);
+    int yValue = Integer.parseInt(y.image);
+    ArrayList<Integer> xyValues = new ArrayList<Integer>();
+    xyValues.add(xValue);
+    xyValues.add(yValue);
+    TraceAnalyser.Analyser.namesToCheckListArray.add(xyValues);}else{
+    int xValue = Integer.parseInt(x.image);
+    int yValue = Integer.parseInt(y.image);
+    int zValue = Integer.parseInt(z.image);
+    ArrayList<Integer> xyzValues = new ArrayList<Integer>();
+    xyzValues.add(xValue);
+    xyzValues.add(yValue);
+    xyzValues.add(zValue);
+    TraceAnalyser.Analyser.namesToCheckListArray.add(xyzValues);}}
+
+    }
+    
+} 
+

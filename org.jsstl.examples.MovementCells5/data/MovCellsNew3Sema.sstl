@@ -1,0 +1,37 @@
+const t = 0;
+const dt = 16;
+const dt2 = 19;
+const dt3 = 1;
+const d = 0;
+const dd = 5;
+			
+variable P;
+variable D;
+variable C;
+variable M;
+variable S;
+variable A;
+variable R;
+variable L;
+variable LN;
+	
+formula cellP = {P>0};	
+formula cellC = {C>0};	
+formula cellM = {M>0};	
+formula cellL = {L>0};	
+formula cellM10 = {M>0};	
+
+formula prop1 = {M>0} & {L>0};	
+
+formula notcellL = !cellL;	
+formula recover = \F[t,dt] notcellL;
+formula toneg = cellM & recover;
+formula prop2 = {L>0};
+
+formula Glesion = \G[t,dt2] cellL;
+
+formula signalA = {A>0};
+formula signalR = {R>0};
+
+formula diff = cellC \U[t,dt3] cellM;
+formula lesion = {L>0}\S[d,dd]{LN>0};
